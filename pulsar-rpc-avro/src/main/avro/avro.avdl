@@ -1,0 +1,4 @@
+@namespace("io.streamnative.nahguam.rpc")
+protocol Example {
+	string greeting(string name);
+}
