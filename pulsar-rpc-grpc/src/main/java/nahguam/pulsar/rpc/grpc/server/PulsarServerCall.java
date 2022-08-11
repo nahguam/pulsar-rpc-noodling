@@ -1,58 +1,70 @@
 package nahguam.pulsar.rpc.grpc.server;
 
+import static nahguam.pulsar.rpc.grpc.common.MessageType.SERVER_CLOSE;
+import static nahguam.pulsar.rpc.grpc.common.MessageType.SERVER_HEADERS;
+import static nahguam.pulsar.rpc.grpc.common.MessageType.SERVER_OUTPUT;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.Status;
-import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.client.api.Producer;
-import org.apache.pulsar.shade.org.apache.commons.io.IOUtils;
+import nahguam.pulsar.rpc.grpc.common.MessageMarshaller;
+import nahguam.pulsar.rpc.grpc.common.MessageSender;
+import nahguam.pulsar.rpc.grpc.common.GrpcUtils;
+import nahguam.pulsar.rpc.grpc.protocol.Close;
+import nahguam.pulsar.rpc.grpc.protocol.Headers;
+import nahguam.pulsar.rpc.grpc.protocol.Output;
 
-@Slf4j
 @RequiredArgsConstructor
 class PulsarServerCall<T, R> extends ServerCall<T, R> {
-    private final MethodDescriptor<T, R> descriptor;
-    private final Producer<byte[]> producer;
-    private final String correlationId;
+  private final MessageMarshaller<R> marshaller;
+  private final MethodDescriptor<T, R> descriptor;
+  private final MessageSender sender;
+  private final AtomicBoolean cancelled;
 
-    @Override
-    public void request(int numMessages) {
-        log.debug("request {}", numMessages);
-    }
+  PulsarServerCall(
+      MethodDescriptor<T, R> descriptor, MessageSender sender, AtomicBoolean cancelled) {
+    this(
+        new MessageMarshaller<>(descriptor.getResponseMarshaller()), descriptor, sender, cancelled);
+  }
 
-    @Override
-    public void sendHeaders(Metadata headers) {
-        log.debug("sendHeaders {}", headers);
-    }
+  @Override
+  public void request(int numMessages) {}
 
-    @SneakyThrows
-    @Override
-    public void sendMessage(R message) {
-        log.info("sendMessage {} - {} ", correlationId, message);
-        InputStream inputStream = descriptor.streamResponse(message);
-        byte[] bytes = IOUtils.toByteArray(inputStream);
-        producer.newMessage()
-                .key(correlationId)
-                .value(bytes)
-                .send();
-    }
+  @SneakyThrows
+  @Override
+  public void sendHeaders(Metadata headers) {
+    var metadata = Headers.newBuilder().setMetadata(GrpcUtils.metadata(headers)).build();
+    sender.send(SERVER_HEADERS, metadata);
+  }
 
-    @Override
-    public void close(Status status, Metadata trailers) {
-        log.debug("close {}, {}", status, trailers);
-    }
+  @SneakyThrows
+  @Override
+  public void sendMessage(R message) {
+    var value = marshaller.stream(message);
+    var output = Output.newBuilder().setValue(value).build();
+    sender.send(SERVER_OUTPUT, output);
+  }
 
-    @Override
-    public boolean isCancelled() {
-        log.debug("isCancelled");
-        return false;
-    }
+  @SneakyThrows
+  @Override
+  public void close(Status status, Metadata trailers) {
+    var close =
+        Close.newBuilder()
+            .setStatusCode(status.getCode().value())
+            .setTrailers(GrpcUtils.metadata(trailers))
+            .build();
+    sender.send(SERVER_CLOSE, close);
+  }
 
-    public MethodDescriptor<T, R> getMethodDescriptor() {
-        log.debug("getMethodDescriptor");
-        return descriptor;
-    }
+  @Override
+  public boolean isCancelled() {
+    return cancelled.getAcquire();
+  }
+
+  public MethodDescriptor<T, R> getMethodDescriptor() {
+    return descriptor;
+  }
 }

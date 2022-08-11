@@ -13,22 +13,43 @@
   <artifactId>pulsar-rpc-grpc</artifactId>
 
   <properties>
-    <grpc.version>1.47.0</grpc.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+
+    <grpc.version>1.48.0</grpc.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
-    <protobuf.version>3.5.1</protobuf.version>
+    <reactor.version>3.4.21</reactor.version>
+    <reactor-grpc.version>1.2.3</reactor-grpc.version>
+    <testcontainers.version>1.17.3</testcontainers.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>io.grpc</groupId>
-      <artifactId>grpc-all</artifactId>
+      <artifactId>grpc-protobuf</artifactId>
       <version>${grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>${grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+      <version>${reactor.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.salesforce.servicelibs</groupId>
+      <artifactId>reactor-grpc-stub</artifactId>
+      <version>${reactor-grpc.version}</version>
     </dependency>
     <dependency>
       <groupId>javax.annotation</groupId>
       <artifactId>javax.annotation-api</artifactId>
       <version>${javax.annotation.version}</version>
     </dependency>
+    <!--TODO pulsar-client (not *-all)-->
     <dependency>
       <groupId>org.apache.pulsar</groupId>
       <artifactId>pulsar-client-all</artifactId>
@@ -48,6 +69,19 @@
       <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>pulsar</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -66,6 +100,15 @@
         <configuration>
           <pluginId>grpc-java</pluginId>
           <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+          <protocPlugins>
+            <protocPlugin>
+              <id>reactor-grpc</id>
+              <groupId>com.salesforce.servicelibs</groupId>
+              <artifactId>reactor-grpc</artifactId>
+              <version>1.2.3</version>
+              <mainClass>com.salesforce.reactorgrpc.ReactorGrpcGenerator</mainClass>
+            </protocPlugin>
+          </protocPlugins>
         </configuration>
         <executions>
           <execution>

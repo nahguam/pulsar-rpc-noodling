@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "nahguam.pulsar.rpc.grpc";
+
+package nahguam.example;
+
+service Example {
+  rpc single (Request) returns (Response) {}
+  rpc streamOut (Request) returns (stream Response) {}
+  rpc streamIn (stream Request) returns (Response) {}
+}
+
+message Request {
+  string value = 1;
+}
+
+message Response {
+  string value = 1;
+}

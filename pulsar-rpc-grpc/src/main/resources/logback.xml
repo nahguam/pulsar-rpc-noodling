@@ -5,9 +5,10 @@
     </encoder>
   </appender>
 
-  <logger name="nahguam" level="INFO"/>
+  <logger name="nahguam" level="DEBUG"/>
+  <logger name="org.apache.pulsar.common.util.netty.DnsResolverUtil" level="ERROR"/>
 
-  <root level="WARN">
+  <root level="INFO">
     <appender-ref ref="STDOUT"/>
   </root>
 </configuration>
