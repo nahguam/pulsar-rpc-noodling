@@ -21,6 +21,7 @@ public class PulsarServer implements AutoCloseable {
   private static PulsarServer create(
       PulsarClient client, String topicPrefix, String subscription, BindableService service)
       throws PulsarClientException {
+    //TODO support the ability to listen on multiple channels, perhaps a topics pattern/prefix
     var messagingFactory = new MessagingFactory(client, topicPrefix, subscription);
     var producer = messagingFactory.responsesProducer();
     var handlerFactory = new PulsarServerHandler.Factory(producer);
